@@ -2,6 +2,8 @@ import logging
 import uuid
 
 import numpy as np
+from pathos.helpers import cpu_count
+from pathos.multiprocessing import ProcessingPool as Pool
 from pyboy import PyBoy
 
 from actions import drop, move_sides, turn, apply_actions
@@ -11,9 +13,9 @@ from tetris_utils import save_game_state, load_game_state, get_block
 from utils import get_board_info, get_binary_board
 
 # Popoulation size (number of players)
-SIZE = 50
+SIZE = 20
 # Number of generations to train
-GENERATIONS = 15
+GENERATIONS = 20
 
 # Set pyboy logger level to ERROR only
 pyboy_logger = logging.getLogger('pyboy')
@@ -30,7 +32,7 @@ console_handler.setFormatter(log_formatter)
 console_handler.setLevel(logging.INFO)
 root_logger.addHandler(console_handler)
 # Log to file
-file_handler = logging.FileHandler('training_name.log')
+file_handler = logging.FileHandler('training_20_20.log')
 file_handler.setFormatter(log_formatter)
 file_handler.setLevel(logging.DEBUG)
 root_logger.addHandler(file_handler)
@@ -46,16 +48,6 @@ class Population:
 
     def train(self):
         """Creates tetris instance and runs players"""
-        # To debug
-        pyboy = PyBoy('tetris.gb', window_type="headless", game_wrapper=True)
-        # pyboy = PyBoy('tetris.gb', game_wrapper=True)
-        pyboy.set_emulation_speed(0)
-        tetris = pyboy.game_wrapper()
-        tetris.start_game()
-
-        # Set block animation to fall instantly
-        pyboy.set_memory_value(0xff9a, 2)
-        
         init = True
         self.players = []
         
@@ -68,10 +60,12 @@ class Population:
                 self.evolve()
             init = False
             root_logger.info(f'STARTING GENERATION {j} TRAINING')
-            for i in range(self.size):
-                self.players[i].run_child(pyboy, tetris)
-            
-
+            # CPU DISPONIBLES - 2
+            cpus = cpu_count()-2 if cpu_count()>2 else 1
+            pool = Pool(cpus)
+            ps = pool.map(self._launch_player_train, [i for i in range(self.size)])
+            self.players = ps  
+        
     def evolve(self):
         root_logger.info(f'GEN {self.generations} evaluated')
         gen_fitnesses = [p.fitness for p in self.players]
@@ -81,7 +75,7 @@ class Population:
         new_players = []
         # add best player
         new_players.append(sorted_players[0])
-        root_logger.info(f'Elite fitness: {new_players[0].fitness}')
+        root_logger.info(f'Elite fitness {new_players[0].id}: {new_players[0].fitness}')
         # select top .5
         selected = sorted_players[:int(len(sorted_players)/10)]
         selected_dna = [a.dna for a in selected]
@@ -89,7 +83,7 @@ class Population:
         def get_random_dna(dna_list):
             return np.random.choice(dna_list)
 
-        for i in range(SIZE-1):
+        for _ in range(SIZE-1):
             new_players.append(Player(uuid.uuid4(), get_random_dna(selected_dna).crossover(get_random_dna(selected_dna))))
 
         self.generations += 1
@@ -104,10 +98,23 @@ class Population:
 
         # Set block animation to fall instantly
         pyboy.set_memory_value(0xff9a, 2)
-        
+
         self.players = [Player(uuid.uuid4(), Dna(self.play_weights))]
         self.players[0].run_child(pyboy, tetris, train=False)
 
+        pyboy.stop()
+
+    def _launch_player_train(self, idx):
+        pyboy = PyBoy('tetris.gb', window_type="headless", game_wrapper=True)
+        # pyboy = PyBoy('tetris.gb', game_wrapper=True)
+        pyboy.set_emulation_speed(0)
+        tetris = pyboy.game_wrapper()
+        tetris.start_game()
+        root_logger.debug(f'Starting player index {idx}')
+        self.players[idx].run_child(pyboy, tetris)
+        root_logger.debug(f'Finished player index  {idx}')
+        pyboy.stop()
+        return self.players[idx]
 
 class Player:
     def __init__(self, _id, dna):
