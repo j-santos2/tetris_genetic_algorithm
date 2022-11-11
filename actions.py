@@ -36,12 +36,12 @@ def drop(pyboy):
     
 def apply_actions(pyboy, side, n_move, n_turn):
     """Return pos"""
+    for _ in range(n_turn):
+        turn(pyboy)
+
     if side != 'none':
         for _ in range(n_move):
             move_sides(pyboy, side)
-    
-    for _ in range(n_turn):
-        turn(pyboy)
         
     drop(pyboy)
     
