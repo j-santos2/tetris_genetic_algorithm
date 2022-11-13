@@ -15,7 +15,7 @@ from utils import get_board_info, get_binary_board
 # Popoulation size (number of players)
 SIZE = 20
 # Number of generations to train
-GENERATIONS = 20
+GENERATIONS = 15
 
 # Set pyboy logger level to ERROR only
 pyboy_logger = logging.getLogger('pyboy')
@@ -32,7 +32,7 @@ console_handler.setFormatter(log_formatter)
 console_handler.setLevel(logging.INFO)
 root_logger.addHandler(console_handler)
 # Log to file
-file_handler = logging.FileHandler('training_20_20.log')
+file_handler = logging.FileHandler('training.log')
 file_handler.setFormatter(log_formatter)
 file_handler.setLevel(logging.DEBUG)
 root_logger.addHandler(file_handler)
@@ -77,7 +77,7 @@ class Population:
         new_players.append(sorted_players[0])
         root_logger.info(f'Elite fitness {new_players[0].id}: {new_players[0].fitness}')
         # select top .5
-        selected = sorted_players[:int(len(sorted_players)/10)]
+        selected = sorted_players[:int(len(sorted_players)/3)]
         selected_dna = [a.dna for a in selected]
 
         def get_random_dna(dna_list):
@@ -122,7 +122,7 @@ class Player:
         self.dna = dna
         self.fitness = 0
 
-    def calculate_fitness(self, tetris, cleared_lines):
+    def calculate_move_score(self, tetris, cleared_lines):
         score = 0
         board = get_binary_board(tetris)
         params = get_board_info(board, tetris, cleared_lines)
@@ -153,7 +153,7 @@ class Player:
             # No moving
             for turns in range(turns_needed):
                 move_dir = apply_actions(pyboy, 'none', n_move=0, n_turn=turns)
-                score = self.calculate_fitness(tetris, cleared_lines)
+                score = self.calculate_move_score(tetris, cleared_lines)
                 if score is not None and score >= best_action_score:
                     best_action_score = score
                     best_action = {'turn': move_dir['turn'],
@@ -165,7 +165,7 @@ class Player:
             for turns in range(turns_needed):
                 for moves_needed in range(1, lefts_needed + 1):
                     move_dir = apply_actions(pyboy, 'left', n_move=moves_needed, n_turn=turns)
-                    score = self.calculate_fitness(tetris, cleared_lines)
+                    score = self.calculate_move_score(tetris, cleared_lines)
                     if score is not None and score >= best_action_score:
                         best_action_score = score
                         best_action = {'turn': move_dir['turn'],
@@ -177,7 +177,7 @@ class Player:
             for turns in range(turns_needed):
                 for moves_needed in range(1, rights_needed + 1):
                     move_dir = apply_actions(pyboy, 'right', n_move=moves_needed, n_turn=turns)
-                    score = self.calculate_fitness(tetris, cleared_lines)
+                    score = self.calculate_move_score(tetris, cleared_lines)
                     if score is not None and score >= best_action_score:
                         best_action_score = score
                         best_action = {'turn': move_dir['turn'],
