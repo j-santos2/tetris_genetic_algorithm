@@ -39,12 +39,13 @@ root_logger.addHandler(file_handler)
 
 
 class Population:
-    def __init__(self, size = SIZE, generations=GENERATIONS, play_weights=None):
+    def __init__(self, size = SIZE, generations=GENERATIONS, play_weights=None, show_best=False):
         self.size = size
         self.generations = 0
         self.total_generations = generations
         self.players = []
         self.play_weights = play_weights
+        self._show_best = show_best
 
     def train(self):
         """Creates tetris instance and runs players"""
@@ -105,8 +106,10 @@ class Population:
         pyboy.stop()
 
     def _launch_player_train(self, idx):
-        pyboy = PyBoy('tetris.gb', window_type="headless", game_wrapper=True)
-        # pyboy = PyBoy('tetris.gb', game_wrapper=True)
+        if idx == 0 and self._show_best:
+            pyboy = PyBoy('tetris.gb', game_wrapper=True)  
+        else:
+            pyboy = PyBoy('tetris.gb', window_type="headless", game_wrapper=True)
         pyboy.set_emulation_speed(0)
         tetris = pyboy.game_wrapper()
         tetris.start_game()
@@ -220,5 +223,5 @@ class Player:
         root_logger.debug(f'{self.id}\t| Final Weights: {self.dna.genes}')
 
 if __name__ == '__main__':
-    p = Population()
+    p = Population(show_best=True)
     p.train()
