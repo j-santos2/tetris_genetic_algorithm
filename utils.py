@@ -11,7 +11,7 @@ def get_board_info(board, tetris, cleared_lines_before):
     # Columns heights
     peaks = get_peaks(board)
     highest_peak = np.max(peaks) 
-    highest_peak_weighted = highest_peak ** 1.5
+    highest_peak_weighted = highest_peak
     # Aggregated height
     aggregated_height = np.sum(peaks)
 
@@ -29,10 +29,6 @@ def get_board_info(board, tetris, cleared_lines_before):
 
     # The number of lines gained with the move
     cleared = (tetris.lines - cleared_lines_before) * 10
-    
-    row_tran = get_row_transition(board, highest_peak)
-
-    col_tran = get_col_transition(board, peaks)
 
     return aggregated_height, n_holes, adj_height_diff_sum, cleared, \
         num_empty_cols, n_cols_with_holes, highest_peak_weighted#, row_tran, col_tran
@@ -71,26 +67,6 @@ def get_holes(peaks, board):
             # From peak to bottom count empty spaces
             holes.append(np.count_nonzero(board[int(peak):, col]))
     return holes
-
-def get_row_transition(area, highest_peak):
-    sum = 0
-    # From highest peak to bottom
-    for row in range(int(area.shape[0] - highest_peak), area.shape[0]):
-        for col in range(1, area.shape[1]):
-            if area[row, col] != area[row, col - 1]:
-                sum += 1
-    return sum
-
-
-def get_col_transition(area, peaks):
-    sum = 0
-    for col in range(area.shape[1]):
-        if peaks[col] <= 1:
-            continue
-        for row in range(int(area.shape[0] - peaks[col]), area.shape[0] - 1):
-            if area[row, col] != area[row + 1, col]:
-                sum += 1
-    return sum
 
 def calculate_move_score(params, weights):
     """Returns move value given the calculated parameters from the move and weights"""
